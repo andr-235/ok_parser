@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -10,8 +10,8 @@ class Group:
     description: Optional[str] = None
     members_count: int = 0
     photo_url: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         return {
@@ -32,8 +32,8 @@ class Group:
             description=data.get("description"),
             members_count=data.get("members_count", 0),
             photo_url=data.get("photo_url"),
-            created_at=data.get("created_at", datetime.utcnow()),
-            updated_at=data.get("updated_at", datetime.utcnow()),
+            created_at=data.get("created_at", datetime.now(timezone.utc)),
+            updated_at=data.get("updated_at", datetime.now(timezone.utc)),
         )
 
     @classmethod

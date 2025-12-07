@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -11,8 +11,8 @@ class Discussion:
     title: Optional[str] = None
     message: Optional[str] = None
     owner_uid: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     total_comments_count: int = 0
 
     def to_dict(self) -> dict:
@@ -37,8 +37,8 @@ class Discussion:
             title=data.get("title"),
             message=data.get("message"),
             owner_uid=data.get("owner_uid"),
-            created_at=data.get("created_at", datetime.utcnow()),
-            updated_at=data.get("updated_at", datetime.utcnow()),
+            created_at=data.get("created_at", datetime.now(timezone.utc)),
+            updated_at=data.get("updated_at", datetime.now(timezone.utc)),
             total_comments_count=data.get("total_comments_count", 0),
         )
 
@@ -66,10 +66,10 @@ class Discussion:
         object_type = data.get("object_type", "GROUP_TOPIC")
         
         creation_date = data.get("creation_date")
-        created_at = datetime.utcnow()
+        created_at = datetime.now(timezone.utc)
         if creation_date:
             try:
-                created_at = datetime.strptime(creation_date, "%Y-%m-%d %H:%M:%S")
+                created_at = datetime.strptime(creation_date, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
             except ValueError:
                 pass
         

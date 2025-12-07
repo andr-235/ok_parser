@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -11,7 +11,7 @@ class Comment:
     author_id: str
     author_name: str
     text: str
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     likes_count: int = 0
     reply_to_id: Optional[str] = None
     discussion_text: Optional[str] = None
@@ -39,7 +39,7 @@ class Comment:
             author_id=data["author_id"],
             author_name=data["author_name"],
             text=data["text"],
-            created_at=data.get("created_at", datetime.utcnow()),
+            created_at=data.get("created_at", datetime.now(timezone.utc)),
             likes_count=data.get("likes_count", 0),
             reply_to_id=data.get("reply_to_id"),
             discussion_text=data.get("discussion_text"),
@@ -69,9 +69,9 @@ class Comment:
         created_ms = data.get("created_ms", data.get("date", 0))
         
         if isinstance(created_ms, int) and created_ms > 0:
-            created_at = datetime.fromtimestamp(created_ms / 1000)
+            created_at = datetime.fromtimestamp(created_ms / 1000, tz=timezone.utc)
         else:
-            created_at = datetime.utcnow()
+            created_at = datetime.now(timezone.utc)
 
         return cls(
             id=str(data.get("id", "")),
