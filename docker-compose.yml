@@ -1,0 +1,57 @@
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: ok_mongo
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand('ping').ok"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  parser:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ok_parser
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/
+      - MONGO_DB_NAME=okdb
+    volumes:
+      - .:/app
+    command: ["python", "-m", "parser.main", "${GROUP_ID:-}"]
+    profiles:
+      - parser
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ok_dashboard
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/
+      - MONGO_DB_NAME=okdb
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+
