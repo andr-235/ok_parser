@@ -1,4 +1,5 @@
 import time
+import json
 import logging
 from typing import Any, Optional
 
@@ -7,6 +8,7 @@ import requests
 from .base import BaseAPI
 from .auth import OKAuth
 from ..models import Group, Comment
+from ..utils.validation import validate_group_id
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +57,11 @@ class OKApiClient(BaseAPI):
             
             logger.debug(f"Response status: {response.status_code}, length: {len(response.text)}")
             
-            data = response.json()
+            try:
+                data = response.json()
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {e}")
+                raise OKApiError(code=0, message="Invalid JSON response from API")
             
             if data is None:
                 logger.error(f"Empty response from API")
@@ -74,11 +80,8 @@ class OKApiClient(BaseAPI):
             raise
 
     def get_group_info(self, group_id: str, fields: Optional[str] = None) -> Group:
-        # Валидация group_id
-        if not group_id or not str(group_id).strip().isdigit():
-            raise ValueError(f"Invalid group_id: {group_id}. Must contain only digits.")
-        
-        params = {"uids": str(group_id).strip()}
+        group_id = validate_group_id(group_id)
+        params = {"uids": group_id}
         if fields:
             params["fields"] = fields
         else:
@@ -108,15 +111,14 @@ class OKApiClient(BaseAPI):
         # Валидация входных данных
         if not discussion_id or not str(discussion_id).strip():
             raise ValueError("discussion_id cannot be empty")
-        if not group_id or not str(group_id).strip().isdigit():
-            raise ValueError(f"Invalid group_id: {group_id}. Must contain only digits.")
+        group_id = validate_group_id(group_id)
         if count < 1 or count > 1000:
             raise ValueError(f"count must be between 1 and 1000, got {count}")
         if offset < 0:
             raise ValueError(f"offset must be >= 0, got {offset}")
         
         params = {
-            "discussionId": str(discussion_id).strip(),
+            "discussionId": discussion_id.strip(),
             "discussionType": discussion_type,
             "count": str(count),
             "offset": str(offset),
@@ -125,16 +127,11 @@ class OKApiClient(BaseAPI):
         
         response = self.request("discussions.getComments", params)
         
-        logger.info(
-            f"get_comments: discussionId={discussion_id}, "
-            f"discussionType={discussion_type}, group_id={group_id}"
-        )
-        
         if response is None:
             logger.warning(f"No response for discussion {discussion_id}")
             return []
         comments_data = response.get("comments", [])
-        logger.info(f"Got {len(comments_data)} comments from API response")
+        logger.debug(f"Got {len(comments_data)} comments from API for discussion {discussion_id}")
         
         author_ids = list(set(
             str(c.get("author_id", ""))
@@ -162,8 +159,7 @@ class OKApiClient(BaseAPI):
         offset: int = 0,
     ) -> list[dict]:
         # Валидация входных данных
-        if not group_id or not str(group_id).strip().isdigit():
-            raise ValueError(f"Invalid group_id: {group_id}. Must contain only digits.")
+        group_id = validate_group_id(group_id)
         if count < 1 or count > 1000:
             raise ValueError(f"count must be between 1 and 1000, got {count}")
         if offset < 0:
@@ -175,17 +171,13 @@ class OKApiClient(BaseAPI):
         # ВАЖНО: API возвращает активность В группе (посты пользователей),
         # а не официальные посты ОТ группы. Для постов группы нужны права админа.
         params_list = {
-            "gid": str(group_id).strip(),
+            "gid": group_id,
             "count": str(count),
             "offset": str(offset),
         }
         
-        logger.info(f"get_discussions: fetching discussions from group {group_id}, params={params_list}")
+        logger.debug(f"Fetching discussions from group {group_id}")
         response_list = self.request("discussions.getList", params_list)
-        
-        logger.info(f"get_discussions.getList response type: {type(response_list)}")
-        logger.info(f"get_discussions.getList response keys: {list(response_list.keys()) if isinstance(response_list, dict) else 'Not a dict'}")
-        logger.info(f"get_discussions.getList full response (first 500 chars): {str(response_list)[:500]}")
         
         if response_list is None:
             logger.warning("get_discussions: discussions.getList response is None")
@@ -212,24 +204,13 @@ class OKApiClient(BaseAPI):
                     
                     # Логируем, если найден пост от группы (редкость)
                     if owner_uid and str(owner_uid) == str(group_id):
-                        logger.info(f"get_discussions: found GROUP post {object_id} (type={object_type})")
-                    else:
-                        logger.debug(f"get_discussions: user post {object_id} (type={object_type}, owner={owner_uid})")
+                        logger.debug(f"Found GROUP post {object_id} (type={object_type})")
                 
-                logger.info(f"get_discussions: collected {len(all_discussions)} discussions from group feed")
+                logger.debug(f"Collected {len(all_discussions)} discussions from group feed")
             else:
                 logger.warning(f"get_discussions: discussions from getList is not a list: {type(discussions)}")
         
-        logger.info(f"get_discussions: total {len(all_discussions)} discussions for group {group_id}")
-        
-        # Логируем типы обсуждений
-        if all_discussions:
-            types_count = {}
-            for d in all_discussions:
-                if d:
-                    t = d.get('object_type', 'UNKNOWN')
-                    types_count[t] = types_count.get(t, 0) + 1
-            logger.info(f"get_discussions: discussion types: {types_count}")
+        logger.debug(f"Total {len(all_discussions)} discussions for group {group_id}")
         
         return all_discussions
     

@@ -1,41 +1,17 @@
 import os
 import sys
 import logging
-from logging.handlers import RotatingFileHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 import pandas as pd
 from pymongo import MongoClient
+from parser.utils.logging import setup_logging
 
-# Настройка логирования в файл
-log_dir = "logs"
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, "dashboard.log")
-
-file_handler = RotatingFileHandler(
-    log_file,
-    maxBytes=10 * 1024 * 1024,  # 10 MB
-    backupCount=5,
-    encoding='utf-8'
-)
-file_handler.setLevel(logging.INFO)
-file_formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-file_handler.setFormatter(file_formatter)
-
-# Консольный handler
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(file_formatter)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[file_handler, console_handler],
-)
+# Настройка логирования
+log_file = os.path.join("logs", "dashboard.log")
+setup_logging(log_file)
 
 from dashboard.components.charts import (
     render_comments_by_date,

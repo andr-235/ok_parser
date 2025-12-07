@@ -1,45 +1,19 @@
 import logging
 import argparse
 import os
-from logging.handlers import RotatingFileHandler
 from pymongo import MongoClient
 
 from .config import get_settings
 from .api import OKAuth, OKApiClient
 from .repositories import GroupRepository, CommentRepository, DiscussionRepository
 from .services import ParserService
+from .utils.logging import setup_logging
+from .utils.validation import validate_group_id
 
-# Настройка логирования в файл
-log_dir = "logs"
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, "parser.log")
-
-file_handler = RotatingFileHandler(
-    log_file,
-    maxBytes=10 * 1024 * 1024,  # 10 MB
-    backupCount=5,
-    encoding='utf-8'
-)
-file_handler.setLevel(logging.INFO)
-file_formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-file_handler.setFormatter(file_formatter)
-
-# Консольный handler
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-console_handler.setFormatter(file_formatter)
-
-# Настройка root logger
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[file_handler, console_handler],
-)
-
+# Настройка логирования
+log_file = os.path.join("logs", "parser.log")
+setup_logging(log_file)
 logger = logging.getLogger(__name__)
-logger.info(f"Logging to file: {log_file}")
 
 
 def create_parser_service() -> ParserService:
@@ -91,8 +65,10 @@ def main() -> None:
     args = parser.parse_args()
     
     # Валидация group_id
-    if not args.group_id.strip().isdigit():
-        logger.error(f"Invalid group_id: {args.group_id}. Must contain only digits.")
+    try:
+        group_id = validate_group_id(args.group_id)
+    except ValueError as e:
+        logger.error(str(e))
         return
     
     service = create_parser_service()
@@ -100,12 +76,12 @@ def main() -> None:
     if args.discussion_id:
         count = service.parse_discussion(
             discussion_id=args.discussion_id,
-            group_id=args.group_id,
+            group_id=group_id,
         )
         logger.info(f"Parsed {count} comments")
     else:
         result = service.full_parse(
-            group_id=args.group_id,
+            group_id=group_id,
             max_discussions=args.max_discussions,
         )
         logger.info(f"Result: {result}")
