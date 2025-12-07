@@ -53,7 +53,7 @@ class OKApiClient(BaseAPI):
             response.raise_for_status()
             self._last_request_time = time.time()
             
-            logger.info(f"Response: {response.text[:500]}")
+            logger.debug(f"Response status: {response.status_code}, length: {len(response.text)}")
             
             data = response.json()
             
@@ -74,7 +74,11 @@ class OKApiClient(BaseAPI):
             raise
 
     def get_group_info(self, group_id: str, fields: Optional[str] = None) -> Group:
-        params = {"uids": group_id}
+        # Валидация group_id
+        if not group_id or not str(group_id).strip().isdigit():
+            raise ValueError(f"Invalid group_id: {group_id}. Must contain only digits.")
+        
+        params = {"uids": str(group_id).strip()}
         if fields:
             params["fields"] = fields
         else:
@@ -101,8 +105,18 @@ class OKApiClient(BaseAPI):
         sort_order: str = "LAST",
         discussion_text: Optional[str] = None,
     ) -> list[Comment]:
+        # Валидация входных данных
+        if not discussion_id or not str(discussion_id).strip():
+            raise ValueError("discussion_id cannot be empty")
+        if not group_id or not str(group_id).strip().isdigit():
+            raise ValueError(f"Invalid group_id: {group_id}. Must contain only digits.")
+        if count < 1 or count > 1000:
+            raise ValueError(f"count must be between 1 and 1000, got {count}")
+        if offset < 0:
+            raise ValueError(f"offset must be >= 0, got {offset}")
+        
         params = {
-            "discussionId": discussion_id,
+            "discussionId": str(discussion_id).strip(),
             "discussionType": discussion_type,
             "count": str(count),
             "offset": str(offset),
@@ -147,13 +161,21 @@ class OKApiClient(BaseAPI):
         count: int = 100,
         offset: int = 0,
     ) -> list[dict]:
+        # Валидация входных данных
+        if not group_id or not str(group_id).strip().isdigit():
+            raise ValueError(f"Invalid group_id: {group_id}. Must contain only digits.")
+        if count < 1 or count > 1000:
+            raise ValueError(f"count must be between 1 and 1000, got {count}")
+        if offset < 0:
+            raise ValueError(f"offset must be >= 0, got {offset}")
+        
         all_discussions = []
         
         # Получаем обсуждения через discussions.getList
         # ВАЖНО: API возвращает активность В группе (посты пользователей),
         # а не официальные посты ОТ группы. Для постов группы нужны права админа.
         params_list = {
-            "gid": group_id,
+            "gid": str(group_id).strip(),
             "count": str(count),
             "offset": str(offset),
         }
@@ -215,8 +237,18 @@ class OKApiClient(BaseAPI):
         if not user_ids:
             return {}
         
+        # Валидация и очистка user_ids
+        valid_ids = [str(uid).strip() for uid in user_ids if uid and str(uid).strip().isdigit()]
+        if not valid_ids:
+            return {}
+        
+        # Ограничение количества для предотвращения слишком больших запросов
+        if len(valid_ids) > 100:
+            logger.warning(f"Too many user_ids ({len(valid_ids)}), limiting to 100")
+            valid_ids = valid_ids[:100]
+        
         params = {
-            "uids": ",".join(user_ids),
+            "uids": ",".join(valid_ids),
             "fields": "uid,first_name,last_name,name",
         }
         
