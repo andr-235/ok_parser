@@ -1,0 +1,55 @@
+МЕТОДЫ API OK.RU, используемые в парсере:
+
+1. МЕТОД: discussions.getList
+   Описание: Получение списка обсуждений группы
+   Параметры:
+   - gid: ID группы (например: 52932403593390)
+   - count: количество обсуждений (по умолчанию: 100)
+   - offset: смещение для пагинации (по умолчанию: 0)
+   
+   Пример запроса:
+   https://api.ok.ru/fb.do?method=discussions.getList&gid=52932403593390&count=100&offset=0
+   
+   Возвращает:
+   - Объект с полями "discussions" или "topics"
+   - Каждое обсуждение содержит:
+     * object_type: тип (GROUP_TOPIC, MOVIE, USER_STATUS, USER_PHOTO)
+     * object_id: ID обсуждения
+     * owner_uid: ID владельца (может быть пользователь или группа)
+     * title: заголовок
+     * message: текст сообщения
+     * creation_date: дата создания
+
+2. МЕТОД: discussions.getComments
+   Описание: Получение комментариев к обсуждению
+   Параметры:
+   - discussionId: ID обсуждения
+   - discussionType: тип обсуждения (GROUP_TOPIC, MOVIE, USER_STATUS, USER_PHOTO)
+   - count: количество комментариев (по умолчанию: 100)
+   - offset: смещение для пагинации (по умолчанию: 0)
+   - order: порядок сортировки (LAST - последние сначала)
+   
+   Пример запроса:
+   https://api.ok.ru/fb.do?method=discussions.getComments&discussionId=158991371972782&discussionType=GROUP_TOPIC&count=100&order=LAST
+
+3. МЕТОД: users.getInfo
+   Описание: Получение информации о пользователях
+   Параметры:
+   - uids: список ID пользователей через запятую
+   - fields: поля для получения (uid,first_name,last_name,name)
+   
+   Используется для получения имен авторов комментариев
+
+4. МЕТОД: group.getInfo
+   Описание: Получение информации о группе
+   Параметры:
+   - uids: ID группы
+   - fields: поля для получения (uid,name,description,members_count,pic_avatar)
+
+ВАЖНО:
+- Метод discussions.getList возвращает АКТИВНОСТЬ В ГРУППЕ
+- Это посты пользователей (USER_STATUS, USER_PHOTO, MOVIE)
+- НЕ официальные посты ОТ группы (owner_uid != group_id)
+- Для постов группы нужны права администратора и метод group.getStatTopics
+- Без прав админа доступна только активность пользователей в группе
+
