@@ -90,6 +90,11 @@ def main() -> None:
     )
     args = parser.parse_args()
     
+    # Валидация group_id
+    if not args.group_id.strip().isdigit():
+        logger.error(f"Invalid group_id: {args.group_id}. Must contain only digits.")
+        return
+    
     service = create_parser_service()
     
     if args.discussion_id:

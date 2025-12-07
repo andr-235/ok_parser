@@ -22,8 +22,12 @@ class ParserService:
         self._discussion_repo = discussion_repo
 
     def parse_group(self, group_id: str) -> Group:
+        # Валидация group_id
+        if not group_id or not str(group_id).strip().isdigit():
+            raise ValueError(f"Invalid group_id: {group_id}. Must contain only digits.")
+        
         logger.info(f"Parsing group {group_id}")
-        group = self._api.get_group_info(group_id)
+        group = self._api.get_group_info(str(group_id).strip())
         self._group_repo.upsert(group)
         logger.info(f"Group {group.name} saved")
         return group
@@ -36,6 +40,14 @@ class ParserService:
         count: int = 100,
         discussion_data: Optional[dict] = None,
     ) -> int:
+        # Валидация входных данных
+        if not discussion_id or not str(discussion_id).strip():
+            raise ValueError("discussion_id cannot be empty")
+        if not group_id or not str(group_id).strip().isdigit():
+            raise ValueError(f"Invalid group_id: {group_id}. Must contain only digits.")
+        if count < 1 or count > 1000:
+            raise ValueError(f"count must be between 1 and 1000, got {count}")
+        
         logger.info(
             f"Parsing discussion {discussion_id} ({discussion_type}) "
             f"for group {group_id}"

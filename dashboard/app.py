@@ -144,9 +144,14 @@ def render_parser_ui():
     
     if st.button("🚀 Запустить парсинг", type="primary", disabled=not group_id, key="parse_btn"):
         if group_id:
+            # Валидация group_id: только цифры
+            if not group_id.strip().isdigit():
+                st.error("❌ Group ID должен содержать только цифры")
+                return
+            
             with st.spinner(f"Парсинг группы {group_id}..."):
                 try:
-                    result = run_parser(group_id, max_discussions=max_disc)
+                    result = run_parser(group_id.strip(), max_discussions=max_disc)
                     st.success(
                         f"✅ Готово! Группа: {result['group']}, "
                         f"обсуждений: {result['discussions_parsed']}, "
